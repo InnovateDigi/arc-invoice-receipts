@@ -1,0 +1,21 @@
+node_modules/
+artifacts/
+cache/
+coverage/
+coverage.json
+.env
+.env.*
+!.env.example
+*.key
+*.keystore
+deployer.json
+payer.json
+.local/
+# local runs of the deploy/scenario scripts on throw-away nodes
+deployments/hardhat.json
+deployments/localhost.json
+deployments/scenario-hardhat.json
+deployments/scenario-localhost.json
+deployments/arcAnvil.json
+deployments/scenario-arcAnvil.json
+.DS_Store

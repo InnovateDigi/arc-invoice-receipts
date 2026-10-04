@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src https: http://127.0.0.1:* http://localhost:*; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<title>Create an invoice - Arc Invoice Receipts</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Arc Invoice Receipts</a>
+    <nav aria-label="Main">
+      <a href="index.html" aria-current="page">Create invoice</a>
+      <a href="receipts.html" id="nav-receipts">Receipts</a>
+    </nav>
+  </div>
+</header>
+<div id="testnet-banner" class="banner banner-test" role="note" hidden>Arc Testnet: test money only</div>
+
+<main id="main" class="wrap">
+  <h1>Create an invoice</h1>
+  <p class="lead">Get paid in USDC on Arc without running a server. You register the invoice on-chain, share a pay link or QR code, and the payer settles it in one transaction. The USDC goes straight to your wallet and the contract emits a receipt.</p>
+  <noscript><div class="status status-error">This page needs JavaScript.</div></noscript>
+  <div id="no-contract" class="status status-warn" hidden></div>
+
+  <section class="card" id="network-card" aria-labelledby="net-h">
+    <h2 id="net-h">1. Network and wallet</h2>
+    <div class="field">
+      <label for="net-select">Network</label>
+      <select id="net-select"></select>
+    </div>
+    <div class="wallet-bar">
+      <div id="wallet-choice-wrap" hidden>
+        <label for="wallet-choice">Wallet</label>
+        <select id="wallet-choice"></select>
+      </div>
+      <div id="account-line" class="account-line"></div>
+      <div id="chain-line" class="chain-line" hidden></div>
+      <div class="row">
+        <button id="connect-btn" type="button">Connect wallet</button>
+        <button id="switch-btn" type="button" hidden>Switch network</button>
+      </div>
+      <div id="wallet-status" class="status" aria-live="polite" hidden></div>
+    </div>
+    <p class="hint">The account you connect becomes the merchant: it is paid and it is the only account that can cancel the invoice.</p>
+  </section>
+
+  <section class="card" id="form-card" aria-labelledby="form-h">
+    <h2 id="form-h">2. Invoice details</h2>
+    <form id="invoice-form" novalidate>
+      <div class="grid-2">
+        <div class="field">
+          <label for="amount">Amount (USDC)</label>
+          <input id="amount" type="text" inputmode="decimal" autocomplete="off" placeholder="25.00" aria-describedby="amount-hint amount-error">
+          <p class="hint" id="amount-hint">Up to 6 decimal places, for example 1250.50.</p>
+          <div class="field-error" id="amount-error" role="alert"></div>
+        </div>
+        <div class="field">
+          <label for="number">Invoice number (optional)</label>
+          <input id="number" type="text" maxlength="32" autocomplete="off" placeholder="INV-2026-001" aria-describedby="number-error">
+          <div class="field-error" id="number-error" role="alert"></div>
+        </div>
+      </div>
+      <div class="field">
+        <label for="description">Description</label>
+        <textarea id="description" rows="2" maxlength="140" placeholder="What is this invoice for?" aria-describedby="desc-hint description-error"></textarea>
+        <p class="hint" id="desc-hint"><span id="desc-count">0</span> of 140 characters. Only a hash of this text goes on-chain; the text itself travels in the pay link.</p>
+        <div class="field-error" id="description-error" role="alert"></div>
+      </div>
+      <fieldset>
+        <legend>Due date</legend>
+        <div class="preset-row" id="due-presets" role="group" aria-label="Quick due dates">
+          <button type="button" data-days="1" aria-pressed="false">1 day</button>
+          <button type="button" data-days="7" aria-pressed="false">7 days</button>
+          <button type="button" data-days="14" aria-pressed="true">14 days</button>
+          <button type="button" data-days="30" aria-pressed="false">30 days</button>
+          <button type="button" data-days="90" aria-pressed="false">90 days</button>
+          <button type="button" data-days="365" aria-pressed="false">1 year</button>
+        </div>
+        <label for="due-local">Or pick a date and time (your local time)</label>
+        <input id="due-local" type="datetime-local" aria-describedby="due-summary due-error">
+        <p class="hint" id="due-summary"></p>
+        <div class="field-error" id="due-error" role="alert"></div>
+        <p class="hint">The invoice can be paid up to and including this moment.</p>
+      </fieldset>
+      <div id="invisible-note" class="status" hidden></div>
+      <p id="fee-line" class="hint">Connect a wallet and fill in the form to see the estimated network fee.</p>
+      <p class="row"><button id="create-btn" type="submit" class="btn-primary">Create invoice</button>
+      <button id="recheck-btn" type="button" hidden>Check again</button></p>
+      <div id="form-status" class="status" aria-live="polite" role="status" hidden></div>
+    </form>
+  </section>
+
+  <section id="result" class="card" aria-labelledby="res-h" hidden>
+    <h2 id="res-h">Invoice created</h2>
+    <div id="host-warning" class="status status-warn" hidden></div>
+    <div id="result-warning" class="status status-warn" hidden></div>
+    <div class="result-grid">
+      <div>
+        <div id="qr-box" class="qr-box"></div>
+        <p id="qr-error" class="status status-warn" hidden></p>
+        <div class="row mt">
+          <button id="qr-svg-btn" type="button" class="btn-small">Download SVG</button>
+          <button id="qr-png-btn" type="button" class="btn-small">Download PNG</button>
+        </div>
+      </div>
+      <div class="stack">
+        <div>
+          <label for="res-link">Pay link</label>
+          <div class="link-box">
+            <input id="res-link" type="text" readonly>
+            <button id="copy-link-btn" type="button">Copy link</button>
+          </div>
+          <p class="hint">Share this link or the QR code with your customer. It carries the description, and the pay page checks it against the on-chain hash.</p>
+        </div>
+        <div class="row">
+          <a id="open-pay-btn" class="btn btn-primary" href="#" target="_blank" rel="noopener noreferrer">Open pay page</a>
+          <button id="print-btn" type="button">Print invoice</button>
+          <a id="receipts-btn" class="btn" href="receipts.html">View receipts</a>
+        </div>
+        <dl class="kv" id="onchain"></dl>
+      </div>
+    </div>
+  </section>
+
+  <section id="print-sheet" class="print-only" aria-hidden="true">
+    <p class="print-title">Invoice</p>
+    <dl class="kv" id="print-kv"></dl>
+    <div id="print-qr" class="qr-box"></div>
+    <p class="mono" id="print-link"></p>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Open source, MIT licence. This code was written by an AI system and has had no professional security audit. Use at your own risk.</p>
+    <p id="repo-line" hidden><a id="repo-link" href="#">Source code</a></p>
+  </div>
+</footer>
+
+<script src="vendor/qrcode.js"></script>
+<script src="js/config.js"></script>
+<script src="js/deployments.js"></script>
+<script src="js/keccak.js"></script>
+<script src="js/abi.js"></script>
+<script src="js/util.js"></script>
+<script src="js/rpc.js"></script>
+<script src="js/qr.js"></script>
+<script src="js/wallet.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/create.js"></script>
+</body>
+</html>

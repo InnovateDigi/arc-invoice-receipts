@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src https: http://127.0.0.1:* http://localhost:*; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<title>Pay an invoice - Arc Invoice Receipts</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Arc Invoice Receipts</a>
+    <nav aria-label="Main">
+      <a href="index.html">Create invoice</a>
+      <a href="receipts.html" id="nav-receipts">Receipts</a>
+    </nav>
+  </div>
+</header>
+<div id="testnet-banner" class="banner banner-test" role="note" hidden>Arc Testnet: test money only</div>
+
+<main id="main" class="wrap">
+  <h1>Pay an invoice</h1>
+  <p class="lead">The USDC goes straight from your wallet to the merchant in one transaction; the contract never holds funds.</p>
+  <noscript><div class="status status-error">This page needs JavaScript to read the invoice from the blockchain.</div></noscript>
+
+  <div id="load-status" class="status" aria-live="polite" role="status">Loading the invoice from the blockchain...</div>
+  <div id="link-warning" class="status status-warn" hidden></div>
+
+  <section id="invoice-card" class="card" aria-labelledby="inv-h" hidden>
+    <h2 id="inv-h">Invoice <span id="status-badge"></span></h2>
+    <dl class="kv">
+      <dt>Amount</dt><dd><span id="v-amount" class="amount"></span></dd>
+      <dt>Pay to (merchant)</dt>
+      <dd>
+        <code id="v-merchant" class="addr-highlight"></code>
+        <div id="v-merchant-link" class="small"></div>
+        <div class="small muted">Check that this is the address you expect before you pay.</div>
+      </dd>
+      <dt>Description</dt><dd id="v-desc"></dd>
+      <dt>Due</dt><dd id="v-due"></dd>
+      <dt>Network</dt><dd id="v-network"></dd>
+      <dt>Contract</dt><dd id="v-contract"></dd>
+      <dt>Invoice id</dt><dd><code id="v-id"></code></dd>
+      <dt>Reference hash</dt><dd><code id="v-hash"></code></dd>
+    </dl>
+    <div id="paid-info" hidden>
+      <h3>Payment</h3>
+      <dl class="kv">
+        <dt>Paid by</dt><dd><code id="v-payer"></code></dd>
+        <dt>Paid at</dt><dd id="v-paid-at"></dd>
+      </dl>
+      <p class="row"><button id="find-receipt-btn" type="button">Find receipt transaction</button></p>
+      <div id="find-status" class="status" aria-live="polite" hidden></div>
+    </div>
+  </section>
+
+  <section id="pay-section" class="card" aria-labelledby="pay-h" hidden>
+    <h2 id="pay-h">Pay with your wallet</h2>
+    <div class="wallet-bar">
+      <div id="wallet-choice-wrap" hidden>
+        <label for="wallet-choice">Wallet</label>
+        <select id="wallet-choice"></select>
+      </div>
+      <div id="account-line" class="account-line"></div>
+      <div id="chain-line" class="chain-line" hidden></div>
+      <div class="row">
+        <button id="connect-btn" type="button">Connect wallet</button>
+        <button id="switch-btn" type="button" hidden>Switch network</button>
+      </div>
+      <div id="wallet-status" class="status" aria-live="polite" hidden></div>
+    </div>
+    <p id="pay-summary" class="muted"></p>
+    <p id="trust-wrap" class="trust" hidden>
+      <label class="check"><input type="checkbox" id="trust-check"> I trust this contract and the person who sent me this link. It is not this site's official deployment.</label>
+    </p>
+    <p class="row"><button id="pay-btn" type="button" class="btn-primary" disabled>Pay</button>
+    <button id="recheck-btn" type="button" hidden>Check again</button></p>
+    <p id="fee-line" class="hint"></p>
+    <div id="pay-status" class="status" aria-live="polite" role="status" hidden></div>
+  </section>
+
+  <section id="receipt-card" class="card" aria-labelledby="rc-h" hidden>
+    <h2 id="rc-h">Receipt: paid in full</h2>
+    <dl class="kv">
+      <dt>Status</dt><dd><span class="badge badge-paid">Paid in full</span></dd>
+      <dt>Amount</dt><dd id="r-amount"></dd>
+      <dt>Paid to (merchant)</dt><dd><code id="r-merchant"></code></dd>
+      <dt>Paid by</dt><dd><code id="r-payer"></code></dd>
+      <dt>Paid at</dt><dd id="r-time"></dd>
+      <dt>Transaction</dt><dd id="r-tx"></dd>
+      <dt>Description</dt><dd id="r-desc"></dd>
+      <dt>Invoice id</dt><dd><code id="r-id"></code></dd>
+      <dt>Network / contract</dt><dd id="r-net"></dd>
+    </dl>
+    <p class="row no-print">
+      <button id="download-receipt-btn" type="button">Download receipt (JSON)</button>
+      <button id="print-receipt-btn" type="button">Print receipt</button>
+    </p>
+  </section>
+
+  <section id="link-error-card" class="card" hidden>
+    <h2>This link cannot be used</h2>
+    <p id="link-error-text"></p>
+    <p><a class="btn" href="index.html">Create an invoice instead</a></p>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Open source, MIT licence. This code was written by an AI system and has had no professional security audit. Use at your own risk.</p>
+    <p id="repo-line" hidden><a id="repo-link" href="#">Source code</a></p>
+  </div>
+</footer>
+
+<script src="vendor/qrcode.js"></script>
+<script src="js/config.js"></script>
+<script src="js/deployments.js"></script>
+<script src="js/keccak.js"></script>
+<script src="js/abi.js"></script>
+<script src="js/util.js"></script>
+<script src="js/rpc.js"></script>
+<script src="js/qr.js"></script>
+<script src="js/wallet.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/pay.js"></script>
+</body>
+</html>

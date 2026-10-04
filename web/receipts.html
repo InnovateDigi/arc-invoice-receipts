@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; connect-src https: http://127.0.0.1:* http://localhost:*; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<title>Receipts - Arc Invoice Receipts</title>
+<link rel="icon" href="data:,">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<header class="site-header">
+  <div class="wrap">
+    <a class="brand" href="index.html">Arc Invoice Receipts</a>
+    <nav aria-label="Main">
+      <a href="index.html">Create invoice</a>
+      <a href="receipts.html" id="nav-receipts" aria-current="page">Receipts</a>
+    </nav>
+  </div>
+</header>
+<div id="testnet-banner" class="banner banner-test" role="note" hidden>Arc Testnet: test money only</div>
+
+<main id="main" class="wrap">
+  <h1>Receipts</h1>
+  <p class="lead">Every invoice and payment is an event on the chain. This page reads them straight from the public Arc RPC, builds your list and exports it as CSV. Nothing is sent to a server.</p>
+  <noscript><div class="status status-error">This page needs JavaScript to read the blockchain.</div></noscript>
+  <div id="no-contract" class="status status-warn" hidden></div>
+
+  <section class="card" aria-labelledby="q-h">
+    <h2 id="q-h">What to load</h2>
+    <form id="scan-form" novalidate>
+      <div class="grid-2">
+        <div class="field">
+          <label for="net-select">Network</label>
+          <select id="net-select"></select>
+        </div>
+        <fieldset>
+          <legend>I am the</legend>
+          <div class="radio-row">
+            <label><input type="radio" name="mode" value="merchant" checked> Merchant (invoices I issued)</label>
+            <label><input type="radio" name="mode" value="payer"> Payer (invoices I paid)</label>
+          </div>
+        </fieldset>
+      </div>
+      <div class="field">
+        <label for="addr-input" id="addr-label">Merchant address</label>
+        <input id="addr-input" type="text" autocomplete="off" spellcheck="false" placeholder="0x..." aria-describedby="addr-hint addr-checksum addr-error">
+        <p class="hint" id="addr-hint"></p>
+        <p class="hint mono" id="addr-checksum"></p>
+        <div class="field-error" id="addr-error" role="alert"></div>
+        <p class="row"><button id="use-wallet-btn" type="button" class="btn-small">Use my connected wallet</button>
+        <span id="wallet-status" class="small muted" aria-live="polite"></span></p>
+      </div>
+      <div class="grid-2">
+        <div class="field">
+          <label for="range-select">Range</label>
+          <select id="range-select">
+            <option value="deploy" selected>Since deployment</option>
+            <option value="30d">Last 30 days</option>
+            <option value="7d">Last 7 days</option>
+            <option value="24h">Last 24 hours</option>
+            <option value="custom">Custom from-block</option>
+          </select>
+        </div>
+        <div class="field" id="custom-wrap" hidden>
+          <label for="from-block">From block</label>
+          <input id="from-block" type="text" inputmode="numeric" autocomplete="off" placeholder="0">
+        </div>
+      </div>
+      <details class="field" id="advanced">
+        <summary>Advanced: RPC URL</summary>
+        <label for="rpc-input">RPC URL (optional)</label>
+        <input id="rpc-input" type="text" autocomplete="off" spellcheck="false" placeholder="https://... (empty uses the built-in list)" aria-describedby="rpc-hint rpc-error">
+        <p class="hint" id="rpc-hint">Tried first for this page. https:// only (or http://127.0.0.1 for a node on this computer). Leave it empty to use the built-in endpoints, which are rotated automatically when one is busy.</p>
+        <div class="field-error" id="rpc-error" role="alert"></div>
+      </details>
+      <div class="row">
+        <button id="load-btn" type="submit" class="btn-primary">Load</button>
+        <button id="cancel-btn" type="button" hidden>Cancel scan</button>
+        <button id="rescan-btn" type="button">Rescan everything</button>
+      </div>
+    </form>
+    <div id="progress-wrap" hidden>
+      <p id="progress-text" class="small" aria-live="polite"></p>
+      <progress id="progress" max="100" value="0" aria-label="Scan progress"></progress>
+    </div>
+    <div id="scan-status" class="status" aria-live="polite" role="status" hidden></div>
+  </section>
+
+  <section id="results" class="card" aria-labelledby="res-h" hidden>
+    <h2 id="res-h">Results</h2>
+    <div class="stat-row" id="totals"></div>
+    <div class="row">
+      <div class="field">
+        <label for="status-filter">Show</label>
+        <select id="status-filter">
+          <option value="all">All statuses</option>
+          <option value="open">Open</option>
+          <option value="paid">Paid</option>
+          <option value="expired">Expired</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+      <button id="csv-btn" type="button">Export CSV</button>
+    </div>
+    <div id="table-status" class="status" aria-live="polite" hidden></div>
+    <p id="cancel-hint" class="hint" hidden>To cancel an open invoice, connect the merchant's wallet (button above): Cancel then appears next to its invoices.</p>
+    <div class="table-wrap">
+      <table id="invoice-table">
+        <caption class="offscreen">Invoices and payments</caption>
+        <thead id="table-head"></thead>
+        <tbody id="rows"></tbody>
+      </table>
+    </div>
+    <p><button id="more-btn" type="button" hidden>Show more</button></p>
+    <p class="hint" id="coverage"></p>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <p>Open source, MIT licence. This code was written by an AI system and has had no professional security audit. Use at your own risk.</p>
+    <p id="repo-line" hidden><a id="repo-link" href="#">Source code</a></p>
+  </div>
+</footer>
+
+<script src="vendor/qrcode.js"></script>
+<script src="js/config.js"></script>
+<script src="js/deployments.js"></script>
+<script src="js/keccak.js"></script>
+<script src="js/abi.js"></script>
+<script src="js/util.js"></script>
+<script src="js/rpc.js"></script>
+<script src="js/qr.js"></script>
+<script src="js/wallet.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/receipts.js"></script>
+</body>
+</html>
